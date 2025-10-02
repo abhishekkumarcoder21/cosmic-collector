@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Collector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 100vh;
+            max-height: 800px;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .lives {
+            color: #ff4757;
+        }
+
+        .score {
+            color: #ffd700;
+        }
+
+        .combo {
+            color: #00d2ff;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: calc(100% - 60px);
+            display: block;
+            cursor: pointer;
+        }
+
+        .menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .btn {
+            padding: 15px 40px;
+            margin: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #f093fb, #f5576c);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(245, 87, 108, 0.5);
+        }
+
+        .achievements {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            padding: 20px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .achievement {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .achievement.unlocked {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            transform: scale(1.05);
+        }
+
+        .achievement-icon {
+            font-size: 30px;
+            margin-bottom: 5px;
+        }
+
+        .achievement-name {
+            font-size: 12px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .leaderboard {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 350px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: white;
+        }
+
+        .notification {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            animation: slideDown 0.5s, slideUp 0.5s 2s;
+            z-index: 200;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        @keyframes slideDown {
+            from { transform: translate(-50%, -100px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translate(-50%, 0); opacity: 1; }
+            to { transform: translate(-50%, -100px); opacity: 0; }
+        }
+
+        .game-over-stats {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px;
+            text-align: left;
+            color: white;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .audio-control {
+            position: absolute;
+            top: 60px;
+            right: 8px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            z-index: 150;
+        }
+
+        .audio-control:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <button class="audio-control" id="audioToggle" onclick="toggleAudio()">🔊</button>
+        
+        <div class="top-bar">
+            <div class="stat">
+                <div class="stat-label">Lives</div>
+                <div class="stat-value lives" id="livesDisplay">3</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Score</div>
+                <div class="stat-value score" id="scoreDisplay">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Level</div>
+                <div class="stat-value" id="levelDisplay">1</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Combo</div>
+                <div class="stat-value combo" id="comboDisplay">x1</div>
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Main Menu -->
+        <div id="mainMenu" class="menu-overlay">
+            <div class="title">⭐ COSMIC COLLECTOR ⭐</div>
+            <button class="btn btn-primary" onclick="startGame()">START GAME</button>
+            <button class="btn btn-secondary" onclick="showAchievements()">ACHIEVEMENTS</button>
+            <button class="btn btn-secondary" onclick="showLeaderboard()">LEADERBOARD</button>
+            <div style="margin-top: 20px; color: #888; font-size: 14px;">
+                Tap to collect stars • Avoid meteors • Build combos!
+            </div>
+        </div>
+
+        <!-- Game Over Menu -->
+        <div id="gameOverMenu" class="menu-overlay hidden">
+            <div class="title">GAME OVER</div>
+            <div class="game-over-stats">
+                <div class="stat-row">
+                    <span>Final Score:</span>
+                    <span id="finalScore">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Level Reached:</span>
+                    <span id="finalLevel">1</span>
+                </div>
+                <div class="stat-row">
+                    <span>Best Combo:</span>
+                    <span id="finalCombo">1</span>
+                </div>
+                <div class="stat-row">
+                    <span>Stars Collected:</span>
+                    <span id="finalStars">0</span>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="restartGame()">PLAY AGAIN</button>
+            <button class="btn btn-secondary" onclick="backToMenu()">MAIN MENU</button>
+        </div>
+
+        <!-- Achievements Menu -->
+        <div id="achievementsMenu" class="menu-overlay hidden">
+            <div class="title">ACHIEVEMENTS</div>
+            <div class="achievements" id="achievementsList"></div>
+            <button class="btn btn-secondary" onclick="backToMenu()" style="margin-top: 20px;">BACK</button>
+        </div>
+
+        <!-- Leaderboard Menu -->
+        <div id="leaderboardMenu" class="menu-overlay hidden">
+            <div class="title">LEADERBOARD</div>
+            <div class="leaderboard" id="leaderboardList"></div>
+            <button class="btn btn-secondary" onclick="backToMenu()" style="margin-top: 20px;">BACK</button>
+        </div>
+    </div>
+
+    <script>
+        // Audio System
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let isMuted = false;
+        let bgMusicNode = null;
+        
+        // Sound effect generator using Web Audio API
+        function playSound(type) {
+            if (isMuted) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            switch(type) {
+                case 'collect':
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.1);
+                    break;
+                    
+                case 'hit':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+                    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                    break;
+                    
+                case 'combo':
+                    oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.05);
+                    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.15);
+                    break;
+                    
+                case 'levelup':
+                    oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.3);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.4);
+                    break;
+            }
+        }
+        
+        // Background music generator
+        function playBackgroundMusic() {
+            if (isMuted || bgMusicNode) return;
+            
+            const notes = [261.63, 293.66, 329.63, 392.00, 440.00]; // C, D, E, G, A
+            let noteIndex = 0;
+            
+            function playNote() {
+                if (isMuted || !gameState.isPlaying) {
+                    if (bgMusicNode) {
+                        bgMusicNode.stop();
+                        bgMusicNode = null;
+                    }
+                    return;
+                }
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(notes[noteIndex], audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                bgMusicNode = oscillator;
+                noteIndex = (noteIndex + 1) % notes.length;
+                
+                setTimeout(playNote, 500);
+            }
+            
+            playNote();
+        }
+        
+        function toggleAudio() {
+            isMuted = !isMuted;
+            document.getElementById('audioToggle').textContent = isMuted ? '🔇' : '🔊';
+            
+            if (!isMuted && gameState.isPlaying) {
+                playBackgroundMusic();
+            }
+        }
+        
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameState = {
+            score: 0,
+            lives: 3,
+            level: 1,
+            combo: 1,
+            maxCombo: 1,
+            starsCollected: 0,
+            isPlaying: false,
+            objects: [],
+            particles: [],
+            lastSpawn: 0,
+            difficulty: 1
+        };
+
+        const achievements = [
+            { id: 'first', name: 'First Star', icon: '⭐', unlocked: false, condition: () => gameState.starsCollected >= 1 },
+            { id: 'combo5', name: 'Combo x5', icon: '🔥', unlocked: false, condition: () => gameState.maxCombo >= 5 },
+            { id: 'score500', name: '500 Points', icon: '💯', unlocked: false, condition: () => gameState.score >= 500 },
+            { id: 'level5', name: 'Level 5', icon: '🚀', unlocked: false, condition: () => gameState.level >= 5 },
+            { id: 'combo10', name: 'Combo x10', icon: '⚡', unlocked: false, condition: () => gameState.maxCombo >= 10 },
+            { id: 'survivor', name: 'Survivor', icon: '💪', unlocked: false, condition: () => gameState.score >= 1000 }
+        ];
+
+        let leaderboard = [];
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class GameObject {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.speed = 2 + gameState.difficulty * 0.5;
+                this.radius = type === 'star' ? 15 : 20;
+                this.value = type === 'star' ? 10 : 0;
+            }
+
+            update() {
+                this.y += this.speed;
+            }
+
+            draw() {
+                if (this.type === 'star') {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#ffd700';
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                        const x = this.x + Math.cos(angle) * this.radius;
+                        const y = this.y + Math.sin(angle) * this.radius;
+                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                } else {
+                    ctx.fillStyle = '#ff4757';
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#ff4757';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 5;
+                this.vy = (Math.random() - 0.5) * 5;
+                this.life = 1;
+                this.color = color;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.02;
+            }
+
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function spawnObject() {
+            const now = Date.now();
+            if (now - gameState.lastSpawn > 1000 / gameState.difficulty) {
+                const x = Math.random() * (canvas.width - 40) + 20;
+                const type = Math.random() < 0.7 ? 'star' : 'meteor';
+                gameState.objects.push(new GameObject(x, -30, type));
+                gameState.lastSpawn = now;
+            }
+        }
+
+        function createParticles(x, y, color, count = 15) {
+            for (let i = 0; i < count; i++) {
+                gameState.particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function checkCollision(x, y) {
+            for (let i = gameState.objects.length - 1; i >= 0; i--) {
+                const obj = gameState.objects[i];
+                const dx = x - obj.x;
+                const dy = y - obj.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < obj.radius + 20) {
+                    if (obj.type === 'star') {
+                        gameState.score += obj.value * gameState.combo;
+                        gameState.combo++;
+                        gameState.starsCollected++;
+                        if (gameState.combo > gameState.maxCombo) {
+                            gameState.maxCombo = gameState.combo;
+                        }
+                        createParticles(obj.x, obj.y, '#ffd700');
+                        showNotification(`+${obj.value * gameState.combo}! 🌟`);
+                        
+                        // Sound effects
+                        playSound('collect');
+                        if (gameState.combo % 5 === 0) {
+                            playSound('combo');
+                        }
+                        
+                        checkAchievements();
+                    } else {
+                        gameState.lives--;
+                        gameState.combo = 1;
+                        createParticles(obj.x, obj.y, '#ff4757', 30);
+                        showNotification('💥 HIT!');
+                        playSound('hit');
+                        
+                        if (gameState.lives <= 0) {
+                            endGame();
+                        }
+                    }
+                    gameState.objects.splice(i, 1);
+                    updateDisplay();
+                    return;
+                }
+            }
+        }
+
+        function showNotification(text) {
+            const notif = document.createElement('div');
+            notif.className = 'notification';
+            notif.textContent = text;
+            document.querySelector('.game-container').appendChild(notif);
+            setTimeout(() => notif.remove(), 2500);
+        }
+
+        function checkAchievements() {
+            achievements.forEach(achievement => {
+                if (!achievement.unlocked && achievement.condition()) {
+                    achievement.unlocked = true;
+                    showNotification(`🏆 ${achievement.name} Unlocked!`);
+                }
+            });
+        }
+
+        function updateDisplay() {
+            document.getElementById('livesDisplay').textContent = gameState.lives;
+            document.getElementById('scoreDisplay').textContent = gameState.score;
+            document.getElementById('levelDisplay').textContent = gameState.level;
+            document.getElementById('comboDisplay').textContent = `x${gameState.combo}`;
+
+            if (gameState.score > gameState.level * 200) {
+                gameState.level++;
+                gameState.difficulty = 1 + (gameState.level - 1) * 0.3;
+                showNotification(`🎉 LEVEL ${gameState.level}!`);
+                playSound('levelup');
+            }
+        }
+
+        function gameLoop() {
+            if (!gameState.isPlaying) return;
+
+            ctx.fillStyle = '#0a0a15';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            spawnObject();
+
+            gameState.objects.forEach((obj, index) => {
+                obj.update();
+                obj.draw();
+                if (obj.y > canvas.height + 50) {
+                    gameState.objects.splice(index, 1);
+                    if (obj.type === 'star') {
+                        gameState.combo = 1;
+                    }
+                }
+            });
+
+            gameState.particles.forEach((particle, index) => {
+                particle.update();
+                particle.draw();
+                if (particle.life <= 0) {
+                    gameState.particles.splice(index, 1);
+                }
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if (!gameState.isPlaying) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            checkCollision(x, y);
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (!gameState.isPlaying) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            checkCollision(x, y);
+        });
+
+        function startGame() {
+            gameState = {
+                score: 0,
+                lives: 3,
+                level: 1,
+                combo: 1,
+                maxCombo: 1,
+                starsCollected: 0,
+                isPlaying: true,
+                objects: [],
+                particles: [],
+                lastSpawn: Date.now(),
+                difficulty: 1
+            };
+            document.getElementById('mainMenu').classList.add('hidden');
+            updateDisplay();
+            
+            // Start background music
+            if (!isMuted) {
+                playBackgroundMusic();
+            }
+            
+            gameLoop();
+        }
+
+        function endGame() {
+            gameState.isPlaying = false;
+            document.getElementById('finalScore').textContent = gameState.score;
+            document.getElementById('finalLevel').textContent = gameState.level;
+            document.getElementById('finalCombo').textContent = gameState.maxCombo;
+            document.getElementById('finalStars').textContent = gameState.starsCollected;
+            document.getElementById('gameOverMenu').classList.remove('hidden');
+
+            leaderboard.push({ score: gameState.score, date: new Date().toLocaleDateString() });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 10);
+        }
+
+        function restartGame() {
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            startGame();
+        }
+
+        function backToMenu() {
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            document.getElementById('achievementsMenu').classList.add('hidden');
+            document.getElementById('leaderboardMenu').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+        }
+
+        function showAchievements() {
+            const list = document.getElementById('achievementsList');
+            list.innerHTML = achievements.map(a => `
+                <div class="achievement ${a.unlocked ? 'unlocked' : ''}">
+                    <div class="achievement-icon">${a.unlocked ? a.icon : '🔒'}</div>
+                    <div class="achievement-name">${a.name}</div>
+                </div>
+            `).join('');
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('achievementsMenu').classList.remove('hidden');
+        }
+
+        function showLeaderboard() {
+            const list = document.getElementById('leaderboardList');
+            if (leaderboard.length === 0) {
+                list.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No scores yet. Be the first!</div>';
+            } else {
+                list.innerHTML = leaderboard.map((entry, i) => `
+                    <div class="leaderboard-item">
+                        <span>${i + 1}. Score: ${entry.score}</span>
+                        <span>${entry.date}</span>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('leaderboardMenu').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
